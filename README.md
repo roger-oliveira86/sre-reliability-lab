@@ -14,7 +14,31 @@ This is a **starting laboratory**, not a complete SRE platform or a production-r
 
 ## Platform Engineering roadmap
 
-See [the incremental stack blueprint](docs/platform-engineering-stack.md) and [publication checklist](docs/publication-checklist.md). GitOps, OpenTelemetry, Backstage and GHCR are **future stages**, not running services.
+See [the incremental stack blueprint](docs/platform-engineering-stack.md) and [publication checklist](docs/publication-checklist.md). GitOps, OpenTelemetry and Backstage remain future stages. GHCR publication is implemented and manually triggered.
+
+
+## Verified container delivery
+
+The Python service runs in a non-root Alpine-based container,
+with the base image pinned by digest.
+
+GitHub Actions validates Python tests, Kubernetes YAML syntax,
+container builds and HTTP smoke tests.
+
+Trivy scans container images during PR validation and before
+manual GHCR publication. CRITICAL findings block the workflow;
+HIGH findings are reported.
+
+Verified GHCR release (November 7, 2026):
+
+`ghcr.io/roger-oliveira86/sre-reliability-lab@sha256:4b6013f5ac28b109fbcba868dec2239786c13ce2bfa4f00d20d3bc29d5a60517`
+
+The published image passed a HIGH/CRITICAL vulnerability scan
+with zero findings. This does not establish that the image is
+free of all security risks.
+
+Kubernetes runtime deployment, GitOps, tracing and dashboards
+have not been demonstrated.
 
 ## Architecture
 
