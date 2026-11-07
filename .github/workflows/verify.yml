@@ -7,7 +7,7 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -60,3 +60,66 @@ jobs:
           curl --fail --silent --show-error             http://127.0.0.1:18080/healthz
           curl --fail --silent --show-error             http://127.0.0.1:18080/metrics > /tmp/sre-metrics.txt
           grep -q 'demo_http_requests_total' /tmp/sre-metrics.txt
+
+      - name: Container vulnerability scan
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          docker save -o "$RUNNER_TEMP/sre-lab-ci.tar" sre-lab-ci:pr
+
+          docker run --rm \
+            -v "$RUNNER_TEMP:/scan:ro" \
+            ghcr.io/aquasecurity/trivy@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb \
+            image \
+            --input /scan/sre-lab-ci.tar \
+            --scanners vuln \
+            --severity HIGH,CRITICAL \
+            --format json \
+            --exit-code 0 \
+            > "$RUNNER_TEMP/trivy-report.json"
+
+          python3 - "$RUNNER_TEMP/trivy-report.json" <<'PYCODE'
+          import json
+          import sys
+          from collections import Counter
+          from pathlib import Path
+
+          report = json.loads(Path(sys.argv[1]).read_text())
+
+          findings = [
+              vulnerability
+              for result in report.get("Results", [])
+              for vulnerability in result.get("Vulnerabilities", [])
+          ]
+
+          counts = Counter(
+              vulnerability["Severity"]
+              for vulnerability in findings
+          )
+
+          high = counts["HIGH"]
+          critical = counts["CRITICAL"]
+
+          summary = (
+              f"Trivy: {high} HIGH, {critical} CRITICAL"
+          )
+          print(summary)
+
+          with open(
+              __import__("os").environ["GITHUB_STEP_SUMMARY"],
+              "a",
+          ) as summary_file:
+              summary_file.write(f"### Container vulnerability scan\\n")
+              summary_file.write(f"{summary}\\n")
+
+          for finding in findings[:20]:
+              print(
+                  finding.get("VulnerabilityID", "unknown"),
+                  finding.get("PkgName", "unknown"),
+                  finding.get("Severity", "unknown"),
+              )
+
+          if critical:
+              sys.exit("Critical vulnerabilities detected")
+          PYCODE
