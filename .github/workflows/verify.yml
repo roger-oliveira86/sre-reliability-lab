@@ -35,5 +35,28 @@ jobs:
           docker build -t sre-lab-ci:pr .
           docker run --rm -d --name sre-lab-smoke -p 127.0.0.1:18080:8080 sre-lab-ci:pr
           trap 'docker rm -f sre-lab-smoke >/dev/null 2>&1 || true' EXIT
-          curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:18080/healthz
-          curl --fail --silent --show-error http://127.0.0.1:18080/metrics | grep -q 'http'
+          ready=false
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error               http://127.0.0.1:18080/healthz >/dev/null 2>&1; then
+              ready=true
+              break
+            fi
+
+            if [ "$(docker inspect -f '{{.State.Running}}' sre-lab-smoke)" != "true" ]; then
+              echo "Container terminated during startup"
+              docker logs sre-lab-smoke || true
+              exit 1
+            fi
+
+            sleep 1
+          done
+
+          if [ "$ready" != "true" ]; then
+            echo "Application did not become healthy"
+            docker logs sre-lab-smoke || true
+            exit 1
+          fi
+
+          curl --fail --silent --show-error             http://127.0.0.1:18080/healthz
+          curl --fail --silent --show-error             http://127.0.0.1:18080/metrics > /tmp/sre-metrics.txt
+          grep -q 'demo_http_requests_total' /tmp/sre-metrics.txt
