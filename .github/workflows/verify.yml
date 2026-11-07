@@ -1,0 +1,30 @@
+name: Verify Python and manifests
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: Python tests
+        run: |
+          python3 -m compileall -q src tests
+          python3 -m unittest discover -s tests -v
+      - name: Validate lab YAML syntax
+        run: |
+          python3 -m pip install --disable-pip-version-check 'PyYAML==6.0.2'
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          import yaml
+          paths = sorted(Path('k8s').glob('*.yaml'))
+          assert len(paths) == 3, f'Expected 3 manifests; found {len(paths)}'
+          for path in paths:
+              document = yaml.safe_load(path.read_text())
+              assert isinstance(document, dict) and document.get('apiVersion') and document.get('kind'), path
+              print(f'YAML syntax OK: {path}')
+          PYCODE
