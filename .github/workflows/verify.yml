@@ -87,6 +87,10 @@ jobs:
 
           report = json.loads(Path(sys.argv[1]).read_text())
 
+          results = report.get("Results")
+          if not isinstance(results, list) or not results:
+              sys.exit("Trivy returned an invalid or empty results list")
+
           findings = [
               vulnerability
               for result in report.get("Results", [])
@@ -110,8 +114,8 @@ jobs:
               __import__("os").environ["GITHUB_STEP_SUMMARY"],
               "a",
           ) as summary_file:
-              summary_file.write(f"### Container vulnerability scan\\n")
-              summary_file.write(f"{summary}\\n")
+              summary_file.write("### Container vulnerability scan\n")
+              summary_file.write(f"{summary}\n")
 
           for finding in findings[:20]:
               print(
