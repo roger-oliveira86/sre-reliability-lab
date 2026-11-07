@@ -7,7 +7,7 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -28,3 +28,12 @@ jobs:
               assert isinstance(document, dict) and document.get('apiVersion') and document.get('kind'), path
               print(f'YAML syntax OK: {path}')
           PYCODE
+      - name: Container build and local smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build -t sre-lab-ci:pr .
+          docker run --rm -d --name sre-lab-smoke -p 127.0.0.1:18080:8080 sre-lab-ci:pr
+          trap 'docker rm -f sre-lab-smoke >/dev/null 2>&1 || true' EXIT
+          curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:18080/healthz
+          curl --fail --silent --show-error http://127.0.0.1:18080/metrics | grep -q 'http'
