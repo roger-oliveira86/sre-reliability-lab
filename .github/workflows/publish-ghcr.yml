@@ -1,0 +1,38 @@
+name: Publish container to GHCR
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish OCI image
+    if: github.ref == 'refs/heads/main' && github.repository == 'roger-oliveira86/sre-reliability-lab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout reviewed source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Build, authenticate and publish
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
+          COMMIT_SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/${REPO,,}:sha-${COMMIT_SHA:0:12}"
+          docker build --label "org.opencontainers.image.source=https://github.com/${REPO}" --label "org.opencontainers.image.revision=${COMMIT_SHA}" -t "$IMAGE" .
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+          docker push "$IMAGE" | tee /tmp/ghcr-push.log
+          DIGEST="$(awk '/digest: sha256:/ { print $3 }' /tmp/ghcr-push.log | tail -n 1)"
+          test -n "$DIGEST"
+          echo "Image published: ghcr.io/${REPO,,}@${DIGEST}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Immutable tag: ${IMAGE}" >> "$GITHUB_STEP_SUMMARY"
