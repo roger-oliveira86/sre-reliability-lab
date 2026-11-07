@@ -88,7 +88,7 @@ class Metrics:
                 f'{{{labels}}} {hist["count"]}'
             )
 
-        return "\\n".join(rows) + "\\n"
+        return "\n".join(rows) + "\n"
 
 METRICS = Metrics()
 
