@@ -17,33 +17,78 @@ class Metrics:
 
     def observe(self, method, route, status, duration):
         key = (method, route, str(status))
+        hist_key = (method, route)
+
         with self.lock:
             self.counts[key] = self.counts.get(key, 0) + 1
-            previous = self.durations.setdefault((method, route), [])
-            previous.append(duration)
+
+            hist = self.durations.setdefault(
+                hist_key,
+                {
+                    "count": 0,
+                    "sum": 0.0,
+                    "buckets": [0] * len(BUCKETS),
+                },
+            )
+
+            hist["count"] += 1
+            hist["sum"] += duration
+
+            for i, bound in enumerate(BUCKETS):
+                if duration <= bound:
+                    hist["buckets"][i] += 1
 
     def render(self):
         with self.lock:
             counts = dict(self.counts)
-            durations = {k: list(v) for k, v in self.durations.items()}
+            durations = {
+                key: {
+                    "count": value["count"],
+                    "sum": value["sum"],
+                    "buckets": value["buckets"].copy(),
+                }
+                for key, value in self.durations.items()
+            }
+
         rows = [
-            '# HELP demo_http_requests_total Total HTTP requests.',
-            '# TYPE demo_http_requests_total counter',
+            "# HELP demo_http_requests_total Total HTTP requests.",
+            "# TYPE demo_http_requests_total counter",
         ]
+
         for (method, route, status), value in sorted(counts.items()):
-            rows.append(f'demo_http_requests_total{{method="{method}",route="{route}",status="{status}"}} {value}')
+            rows.append(
+                f'demo_http_requests_total{{method="{method}",'
+                f'route="{route}",status="{status}"}} {value}'
+            )
+
         rows += [
-            '# HELP demo_http_duration_seconds Request latency in seconds.',
-            '# TYPE demo_http_duration_seconds histogram',
+            "# HELP demo_http_duration_seconds Request latency in seconds.",
+            "# TYPE demo_http_duration_seconds histogram",
         ]
-        for (method, route), values in sorted(durations.items()):
+
+        for (method, route), hist in sorted(durations.items()):
             labels = f'method="{method}",route="{route}"'
-            for bound in BUCKETS:
-                rows.append(f'demo_http_duration_seconds_bucket{{{labels},le="{bound}"}} {sum(v <= bound for v in values)}')
-            rows.append(f'demo_http_duration_seconds_bucket{{{labels},le="+Inf"}} {len(values)}')
-            rows.append(f'demo_http_duration_seconds_sum{{{labels}}} {sum(values):.9f}')
-            rows.append(f'demo_http_duration_seconds_count{{{labels}}} {len(values)}')
-        return '\n'.join(rows) + '\n'
+
+            for bound, count in zip(BUCKETS, hist["buckets"]):
+                rows.append(
+                    f'demo_http_duration_seconds_bucket'
+                    f'{{{labels},le="{bound}"}} {count}'
+                )
+
+            rows.append(
+                f'demo_http_duration_seconds_bucket'
+                f'{{{labels},le="+Inf"}} {hist["count"]}'
+            )
+            rows.append(
+                f'demo_http_duration_seconds_sum'
+                f'{{{labels}}} {hist["sum"]:.9f}'
+            )
+            rows.append(
+                f'demo_http_duration_seconds_count'
+                f'{{{labels}}} {hist["count"]}'
+            )
+
+        return "\\n".join(rows) + "\\n"
 
 METRICS = Metrics()
 
