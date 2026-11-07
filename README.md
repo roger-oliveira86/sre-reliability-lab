@@ -8,7 +8,7 @@ An original, minimal reliability lab focused on **measurable service behavior**,
 - Prometheus-compatible request counters and a latency histogram.
 - Structured JSON request logs and a generated request ID.
 - Unit tests, a non-root container image, and example Kubernetes manifests.
-- A GitHub Actions workflow that checks Python syntax, unit tests and basic Kubernetes YAML syntax (not full schema or runtime behavior).
+- GitHub Actions validates Python syntax, unit tests, basic Kubernetes YAML syntax, container smoke tests and vulnerabilities (not Kubernetes runtime behavior).
 
 This is a **starting laboratory**, not a complete SRE platform or a production-ready service. No tracing stack, dashboards, alert delivery, or live Kubernetes execution is claimed.
 

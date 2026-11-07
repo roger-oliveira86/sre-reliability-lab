@@ -1,6 +1,6 @@
 # Platform Engineering Stack — Incremental Blueprint
 
-**Status:** Architecture plan. Only the Python sample, Kubernetes manifests and unit tests are implemented. Do not interpret the diagram as an installed platform.
+**Status:** Incremental architecture. The Python service, container runtime, CI, vulnerability scanning and manual GHCR publication have been verified. Kubernetes deployment and the wider platform have not been demonstrated.
 
 ## Purpose
 
