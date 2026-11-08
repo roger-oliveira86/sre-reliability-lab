@@ -1,6 +1,6 @@
 # Platform Engineering Stack — Incremental Blueprint
 
-**Status:** Architecture plan. Only the Python sample, Kubernetes manifests and unit tests are implemented. Do not interpret the diagram as an installed platform.
+**Status:** Incremental architecture. The Python service, container runtime, CI, vulnerability scanning and manual GHCR publication have been verified. Kubernetes deployment and the wider platform have not been demonstrated.
 
 ## Purpose
 
@@ -34,10 +34,10 @@ Developer -> GitHub PR -> CI checks -> OCI image (GHCR)
 | Layer | Choice | Status | Evidence required to call it complete |
 |---|---|---|---|
 | Application | Python stdlib HTTP demo | **Implemented** | Unit tests and local endpoints |
-| Container | Rootless Dockerfile | **Specified, runtime unverified** | Build and run locally; image inspected |
+| Container | Non-root Alpine image pinned by digest | **Built and tested** | Health, metrics and UID 10001 verified |
 | Orchestration | Kubernetes Deployment + Service | **Specified, runtime unverified** | Ready rollout and cleanup in disposable cluster |
-| CI | GitHub Actions (test + YAML syntax) | **Configured, not yet run remotely** | Green PR check |
-| Container registry | GHCR | **Planned** | Published digest and provenance |
+| CI | GitHub Actions tests, smoke test and Trivy | **Implemented and verified** | Successful required PR check |
+| Container registry | GHCR manual publishing | **Implemented and verified** | Published image digest and successful security scan |
 | GitOps | Argo CD | **Planned** | Synced application and documented rollback |
 | Telemetry | Prometheus + OTel Collector | **Planned** | Measured metrics/traces with known test load |
 | Visualization | Grafana | **Planned** | Redacted dashboard screenshots from a real lab |

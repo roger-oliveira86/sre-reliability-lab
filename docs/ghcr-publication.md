@@ -1,6 +1,6 @@
 # GHCR publication — controlled, manual release
 
-**Status:** Proposed workflow; it only becomes available after this change is merged into `main`. A green PR CI run does **not** mean an image has been published.
+**Status:** Implemented and verified on November 7, 2026. Publication remains manual from protected `main`.
 
 ## Why manual publishing?
 
@@ -19,5 +19,7 @@ Image publication is separate from PR validation. This workflow is started delib
 
 - The publisher uses `GITHUB_TOKEN`, not a stored personal access token, and grants `packages: write` **only to the publish job**.
 - Checkout is pinned to a full commit SHA. The workflow cannot publish from a PR ref.
-- Image release does not currently include a vulnerability scan, signed provenance, SBOM, or a runtime Kubernetes smoke test. These remain follow-up controls rather than implied guarantees.
+- Trivy scans the built image before publication. CRITICAL findings and scanner failures block publication; HIGH findings are reported.
+- Signed provenance, SBOM and runtime Kubernetes validation are not implemented.
+- The blocking behavior for CRITICAL findings has not been tested with an intentionally vulnerable image.
 - The existing PR validation runs on all PRs and is required by the `main` ruleset.
