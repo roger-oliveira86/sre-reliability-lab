@@ -28,6 +28,23 @@ jobs:
               assert isinstance(document, dict) and document.get('apiVersion') and document.get('kind'), path
               print(f'YAML syntax OK: {path}')
           PYCODE
+      - name: Validate Kubernetes schemas with Kubeconform
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=v0.8.0
+          archive="$RUNNER_TEMP/kubeconform-linux-amd64.tar.gz"
+          curl --fail --silent --show-error --location --retry 3 \
+            "https://github.com/yannh/kubeconform/releases/download/$version/kubeconform-linux-amd64.tar.gz" \
+            --output "$archive"
+          echo "9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883  $archive" | sha256sum --check
+          tar -xzf "$archive" -C "$RUNNER_TEMP" kubeconform
+
+          schema_commit=c416d7b0da0751bd8ebe5be4fa4c8e8274e3bbe2
+          schema_url="https://raw.githubusercontent.com/yannh/kubernetes-json-schema/$schema_commit"
+          "$RUNNER_TEMP/kubeconform" -strict -summary -n 1 -kubernetes-version 1.35.0 \
+            -schema-location "$schema_url/{{.NormalizedKubernetesVersion}}-standalone{{.StrictSuffix}}/{{.ResourceKind}}{{.KindSuffix}}.json" \
+            k8s/namespace.yaml k8s/deployment.yaml k8s/service.yaml
       - name: Container build and local smoke test
         shell: bash
         run: |
